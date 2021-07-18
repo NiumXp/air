@@ -3,6 +3,7 @@ package lexer
 const (
 	_IDENTIFIER = iota
 	_KEYWORD
+	_UNKNOWN
 	_LITERAL
 	_SYMBOL
 	_EOF
@@ -39,6 +40,10 @@ func (t *Token) IsKeyword() bool {
 	return false
 }
 
+func (t *Token) IsUnknown() bool {
+	return t.Type == _UNKNOWN
+}
+
 func (t *Token) IsLiteral() bool {
 	return t.Type == _LITERAL
 }
@@ -53,6 +58,10 @@ func (t *Token) IsEOF() bool {
 
 func Identifier(name string) Token {
 	return Token{_IDENTIFIER, name}
+}
+
+func Unknown(value string) Token {
+	return Token{_UNKNOWN, value}
 }
 
 func Literal(value string) Token {
