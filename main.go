@@ -1,8 +1,8 @@
 package main
 
 import (
-	"bufio"
 	"flag"
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -20,17 +20,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	f, err := os.Open(*pathFile)
+	bytes, err := ioutil.ReadFile(*pathFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	scanner.Scan()
-
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+	content := string(bytes)
+	log.Println(content)
 }
