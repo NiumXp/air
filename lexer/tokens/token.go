@@ -2,6 +2,7 @@ package lexer
 
 const (
 	_IDENTIFIER = iota
+	_KEYWORD
 	_LITERAL
 	_SYMBOL
 	_EOF
@@ -9,6 +10,13 @@ const (
 
 var (
 	EOF = Token{_EOF, "EOF"}
+
+	KEYWORDS = [...]string{
+		"package",
+		"use",
+		"blow",
+		"return",
+	}
 )
 
 type Token struct {
@@ -18,6 +26,17 @@ type Token struct {
 
 func (t *Token) IsIdentifier() bool {
 	return t.Type == _IDENTIFIER
+}
+
+func (t *Token) IsKeyword() bool {
+	if t.Type == _KEYWORD {
+		for _, k := range KEYWORDS {
+			if k == t.Value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (t *Token) IsLiteral() bool {
