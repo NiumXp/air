@@ -84,6 +84,14 @@ func (l *Lexer) getDigits(initial rune) string {
 	return string(initial) + string(l.Input[start:l.index])
 }
 
+func (l *Lexer) removeComment() {
+	for {
+		if l.nextRune(true) == '\n' || l.atEOF() {
+			break
+		}
+	}
+}
+
 func (l *Lexer) NextToken() (t.Token, error) {
 	if l.atEOF() {
 		return t.EOF, nil
@@ -95,6 +103,9 @@ func (l *Lexer) NextToken() (t.Token, error) {
 	}
 
 	switch rune_ {
+	case '#':
+		l.removeComment()
+		return l.NextToken() // recursion again :yayy:
 	case '(', ')', '+', '-', '*', '/', '^', ',', '!', '=':
 		return t.Symbol(string(rune_)), nil
 	case '>':
