@@ -1,6 +1,7 @@
 package lexer
 
 import (
+	"errors"
 	"unicode"
 
 	t "github.com/NiumXp/air/lexer/tokens"
@@ -42,6 +43,31 @@ func (l *Lexer) doubleSymbol(s rune, p rune) t.Token {
 	return t.Symbol(string(s))
 }
 
+func (l *Lexer) getString(mark rune) (string, error) {
+	start := l.index
+
+	// We can't use `last := ''`.
+	var last rune
+
+	for {
+		if last == '\n' || l.atEOF() {
+			return "", errors.New("not finished string")
+		}
+
+		actual := l.nextRune(true)
+
+		if (actual == mark) && (last != '\\') {
+			// The second expression allows to escape `"`.
+			break
+		}
+
+		last = actual
+	}
+
+	// The magic number is there because `actual == mark` (`"` or `'`).
+	return string(l.Input[start : l.index-1]), nil
+}
+
 func (l *Lexer) NextToken() (t.Token, error) {
 	if l.atEOF() {
 		return t.EOF, nil
@@ -59,6 +85,9 @@ func (l *Lexer) NextToken() (t.Token, error) {
 		return l.doubleSymbol('>', '='), nil
 	case '<':
 		return l.doubleSymbol('<', '='), nil
+	case '"', '\'':
+		str, err := l.getString(rune_)
+		return t.Literal(str), err
 	}
 
 	return t.Unknown(string(rune_)), nil
