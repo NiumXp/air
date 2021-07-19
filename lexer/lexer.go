@@ -68,6 +68,22 @@ func (l *Lexer) getString(mark rune) (string, error) {
 	return string(l.Input[start : l.index-1]), nil
 }
 
+func (l *Lexer) getDigits(initial rune) string {
+	start := l.index
+
+	for {
+		rune_ := l.nextRune(false)
+
+		if !unicode.IsDigit(rune_) {
+			break
+		}
+
+		l.nextRune(true)
+	}
+
+	return string(initial) + string(l.Input[start:l.index])
+}
+
 func (l *Lexer) NextToken() (t.Token, error) {
 	if l.atEOF() {
 		return t.EOF, nil
@@ -88,6 +104,11 @@ func (l *Lexer) NextToken() (t.Token, error) {
 	case '"', '\'':
 		str, err := l.getString(rune_)
 		return t.Literal(str), err
+	}
+
+	if unicode.IsDigit(rune_) {
+		digits := l.getDigits(rune_)
+		return t.Literal(digits), nil
 	}
 
 	return t.Unknown(string(rune_)), nil
