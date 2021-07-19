@@ -25,73 +25,125 @@ func (l *Lexer) atEOF() bool {
 	return l.index == len(l.Input)
 }
 
-func (l *Lexer) nextRune(consume bool) rune {
-	if l.atEOF() {
-		return l.Input[l.index-1] // `l.index == len(i.Input)`
-	}
-
-	index := l.index + 1
-	if consume {
-		l.index = index
-	}
-
-	return l.Input[index]
+func (l *Lexer) inLastRune() bool {
+	return l.index == len(l.Input)-1
 }
 
-func (l *Lexer) doubleSymbol(s rune, p rune) t.Token {
-	if l.nextRune(false) == p {
-		l.nextRune(true)
-		return t.Symbol(string(s) + string(p))
-	}
-	return t.Symbol(string(s))
+func (l *Lexer) previousRune() rune {
+	return l.Input[l.index-1]
 }
 
-func (l *Lexer) getString(mark rune) (string, error) {
+func (l *Lexer) actualRune() rune {
+	return l.Input[l.index]
+}
+
+func (l *Lexer) nextRune() rune {
+	return l.Input[l.index+1]
+}
+
+func (l *Lexer) walkRune() {
+	l.index += 1
+}
+
+func (l *Lexer) canUseDoubleSymbol(symbol rune) t.Token {
+	actual := string(l.actualRune())
+
+	if l.inLastRune() {
+		l.walkRune()
+		return t.Symbol(actual)
+	}
+
+	if l.nextRune() == symbol {
+		l.walkRune()
+		l.walkRune()
+		return t.Symbol(actual + string(symbol))
+	}
+
+	l.walkRune()
+	return t.Symbol(actual)
+}
+
+func (l *Lexer) getString() (string, error) {
+	mark := l.actualRune()
+	l.walkRune()
+
 	start := l.index
 
-	// We can't use `last := ''`.
-	var last rune
-
 	for {
-		if last == '\n' || l.atEOF() {
+		if l.atEOF() || l.actualRune() == '\n' {
 			return "", errors.New("not finished string")
 		}
 
-		actual := l.nextRune(true)
-
-		if (actual == mark) && (last != '\\') {
-			// The second expression allows to escape `"`.
+		if l.inLastRune() {
+			l.walkRune()
 			break
 		}
 
-		last = actual
+		if (l.nextRune() == mark) && (l.previousRune() != '\\') {
+			l.walkRune()
+			l.walkRune()
+			break
+		}
+
+		l.walkRune()
 	}
 
-	// The magic number is there because `actual == mark` (`"` or `'`).
 	return string(l.Input[start : l.index-1]), nil
 }
 
-func (l *Lexer) getDigits(initial rune) string {
+func (l *Lexer) getDigits() string {
 	start := l.index
 
 	for {
-		rune_ := l.nextRune(false)
+		if l.inLastRune() {
+			l.walkRune()
+		}
 
-		if !unicode.IsDigit(rune_) {
+		if l.atEOF() {
 			break
 		}
 
-		l.nextRune(true)
+		if !unicode.IsDigit(l.nextRune()) {
+			l.walkRune()
+			break
+		}
+
+		l.walkRune()
 	}
 
-	return string(initial) + string(l.Input[start:l.index])
+	return string(l.Input[start:l.index])
+}
+
+func (l *Lexer) getLetters() string {
+	start := l.index
+
+	for {
+		if l.inLastRune() {
+			l.walkRune()
+		}
+
+		if l.atEOF() {
+			break
+		}
+
+		if !unicode.IsLetter(l.nextRune()) {
+			l.walkRune()
+			break
+		}
+
+		l.walkRune()
+	}
+
+	return string(l.Input[start:l.index])
 }
 
 func (l *Lexer) removeComment() {
 	for {
-		if l.nextRune(true) == '\n' || l.atEOF() {
+		if l.atEOF() || l.actualRune() == '\n' {
 			break
 		}
+
+		l.walkRune()
 	}
 }
 
@@ -100,8 +152,10 @@ func (l *Lexer) NextToken() (t.Token, error) {
 		return t.EOF, nil
 	}
 
-	rune_ := l.nextRune(true)
+	rune_ := l.actualRune()
+
 	if unicode.IsSpace(rune_) {
+		l.walkRune()
 		return l.NextToken() // recursion :tada: :cry:
 	}
 
@@ -110,20 +164,23 @@ func (l *Lexer) NextToken() (t.Token, error) {
 		l.removeComment()
 		return l.NextToken() // recursion again :yayy:
 	case '(', ')', '+', '-', '*', '/', '^', ',', '!', '=':
+		l.walkRune()
 		return t.Symbol(string(rune_)), nil
-	case '>':
-		return l.doubleSymbol('>', '='), nil
-	case '<':
-		return l.doubleSymbol('<', '='), nil
+	case '>', '<':
+		return l.canUseDoubleSymbol('='), nil
 	case '"', '\'':
-		str, err := l.getString(rune_)
+		str, err := l.getString()
 		return t.Literal(str), err
 	}
 
 	if unicode.IsDigit(rune_) {
-		digits := l.getDigits(rune_)
-		return t.Literal(digits), nil
+		return t.Literal(l.getDigits()), nil
 	}
 
+	if unicode.IsLetter(rune_) {
+		return t.Identifier(l.getLetters()), nil
+	}
+
+	l.walkRune()
 	return t.Unknown(string(rune_)), nil
 }
