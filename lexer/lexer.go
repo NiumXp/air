@@ -22,7 +22,7 @@ func NewLexer(input string) Lexer {
 }
 
 func (l *Lexer) atEOF() bool {
-	return l.index >= len(l.Input)-1
+	return l.index == len(l.Input)
 }
 
 func (l *Lexer) nextRune(consume bool) rune {
