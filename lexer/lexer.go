@@ -26,13 +26,16 @@ func (l *Lexer) atEOF() bool {
 }
 
 func (l *Lexer) nextRune(consume bool) rune {
-	value := l.Input[l.index]
-
-	if !l.atEOF() && consume {
-		l.index += 1
+	if l.atEOF() {
+		return l.Input[l.index-1] // `l.index == len(i.Input)`
 	}
 
-	return value
+	index := l.index + 1
+	if consume {
+		l.index = index
+	}
+
+	return l.Input[index]
 }
 
 func (l *Lexer) doubleSymbol(s rune, p rune) t.Token {
